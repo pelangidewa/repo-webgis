@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGIS Distance and Azimuth Calculator</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf"></script>
+</head>
+<body>
+    <h1>WebGIS Distance and Azimuth Calculator</h1>
+    <div id="map" style="height: 500px;"></div>
+    
+    <div id="manualInput" style="margin-top: 20px;">
+        <p><strong>Koordinat Titik:</strong></p>
+        <div>
+            <label for="lat1">Latitude Titik 1:</label>
+            <input type="text" id="lat1" placeholder="Klik pada peta untuk memilih titik">
+            <label for="lng1">Longitude Titik 1:</label>
+            <input type="text" id="lng1" placeholder="Klik pada peta untuk memilih titik">
+            <p id="location1">Alamat Titik 1: -</p>
+        </div>
+        <div>
+            <label for="lat2">Latitude Titik 2:</label>
+            <input type="text" id="lat2" placeholder="Klik pada peta untuk memilih titik">
+            <label for="lng2">Longitude Titik 2:</label>
+            <input type="text" id="lng2" placeholder="Klik pada peta untuk memilih titik">
+            <p id="location2">Alamat Titik 2: -</p>
+        </div>
+        <button id="calculateButton" style="margin-top: 10px; padding: 10px 20px;">Hitung</button>
+    </div>
+    
+    <div id="results" style="margin-top: 20px; font-size: 16px;">
+        <p><strong>Hasil Perhitungan:</strong></p>
+        <p id="distance">Jarak: -</p>
+        <p id="azimuth1to2">Azimuth dari Titik 1 ke Titik 2: -</p>
+        <p id="azimuth2to1">Azimuth dari Titik 2 ke Titik 1: -</p>
+    </div>
+
+    <button id="resetButton" style="margin-top: 20px; padding: 10px 20px;">Reset</button>
+    
+    <script>
+        var map = L.map('map').setView([-6.200000, 106.816666], 10);
+
+        // Basemap layers
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var satelliteLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+        });
+
+        var baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "Satellite (OpenTopoMap)": satelliteLayer
+        };
+
+        L.control.layers(baseMaps).addTo(map);
+
+        var markers = [];
+        var lines = [];
+        var selectedPoints = 0;
+
+        function haversine(coord1, coord2) {
+            var R = 6371.0;
+            var lat1 = coord1.lat * Math.PI / 180;
+            var lon1 = coord1.lng * Math.PI / 180;
+            var lat2 = coord2.lat * Math.PI / 180;
+            var lon2 = coord2.lng * Math.PI / 180;
+
+            var dlat = lat2 - lat1;
+            var dlon = lon2 - lon1;
+
+            var a = Math.sin(dlat / 2) ** 2 +
+                    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2) ** 2;
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
+        }
+
+        function calculateAzimuth(coord1, coord2) {
+            var lat1 = coord1.lat * Math.PI / 180;
+            var lon1 = coord1.lng * Math.PI / 180;
+            var lat2 = coord2.lat * Math.PI / 180;
+            var lon2 = coord2.lng * Math.PI / 180;
+
+            var dlon = lon2 - lon1;
+
+            var x = Math.sin(dlon) * Math.cos(lat2);
+            var y = Math.cos(lat1) * Math.sin(lat2) - 
+                    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dlon);
+
+            var initial_bearing = Math.atan2(x, y);
+            initial_bearing = initial_bearing * 180 / Math.PI;
+            return (initial_bearing + 360) % 360;
+        }
+
+        function reverseGeocode(lat, lng, marker, elementId) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+                .then(response => response.json())
+                .then(data => {
+                    var address = data.display_name || "Alamat tidak ditemukan";
+                    document.getElementById(elementId).textContent = `Alamat: ${address}`;
+                    marker.bindPopup(`<b>Koordinat:</b> ${lat}, ${lng}<br><b>Alamat:</b> ${address}`).openPopup();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById(elementId).textContent = "Alamat: Error mendapatkan alamat.";
+                    marker.bindPopup(`<b>Koordinat:</b> ${lat}, ${lng}<br><b>Alamat:</b> Error`).openPopup();
+                });
+        }
+
+        map.on('click', function(e) {
+            if (selectedPoints < 2) {
+                var lat = e.latlng.lat.toFixed(6);
+                var lng = e.latlng.lng.toFixed(6);
+
+                var marker = L.marker(e.latlng).addTo(map);
+                markers.push(marker);
+
+                selectedPoints++;
+
+                if (selectedPoints === 1) {
+                    document.getElementById("lat1").value = lat;
+                    document.getElementById("lng1").value = lng;
+                    reverseGeocode(lat, lng, marker, "location1");
+                } else if (selectedPoints === 2) {
+                    document.getElementById("lat2").value = lat;
+                    document.getElementById("lng2").value = lng;
+                    reverseGeocode(lat, lng, marker, "location2");
+
+                    var coord1 = { lat: parseFloat(document.getElementById("lat1").value), lng: parseFloat(document.getElementById("lng1").value) };
+                    var coord2 = { lat: parseFloat(document.getElementById("lat2").value), lng: parseFloat(document.getElementById("lng2").value) };
+
+                    calculateDistanceAndAzimuth(coord1, coord2);
+                }
+            }
+        });
+
+        document.getElementById("resetButton").addEventListener("click", function() {
+            markers.forEach(function(marker) {
+                map.removeLayer(marker);
+            });
+            markers = [];
+            lines.forEach(function(line) {
+                map.removeLayer(line);
+            });
+            lines = [];
+            selectedPoints = 0;
+
+            document.getElementById("lat1").value = '';
+            document.getElementById("lng1").value = '';
+            document.getElementById("lat2").value = '';
+            document.getElementById("lng2").value = '';
+            document.getElementById("location1").textContent = 'Alamat Titik 1: -';
+            document.getElementById("location2").textContent = 'Alamat Titik 2: -';
+            document.getElementById("distance").textContent = 'Jarak: -';
+            document.getElementById("azimuth1to2").textContent = 'Azimuth dari Titik 1 ke Titik 2: -';
+            document.getElementById("azimuth2to1").textContent = 'Azimuth dari Titik 2 ke Titik 1: -';
+        });
+
+        function calculateDistanceAndAzimuth(coord1, coord2) {
+            var distance = haversine(coord1, coord2);
+            var azimuth1_to_2 = calculateAzimuth(coord1, coord2);
+            var azimuth2_to_1 = calculateAzimuth(coord2, coord1);
+
+            lines.forEach(function(line) {
+                map.removeLayer(line);
+            });
+            lines = [];
+
+            var startPoint = turf.point([coord1.lng, coord1.lat]);
+            var endPoint = turf.point([coord2.lng, coord2.lat]);
+            var geodesicLine = turf.greatCircle(startPoint, endPoint);
+
+            var line = L.geoJSON(geodesicLine, {
+                style: { color: 'blue', weight: 2 }
+            }).addTo(map);
+            lines.push(line);
+
+            document.getElementById("distance").textContent = 'Jarak: ' + distance.toFixed(2) + ' km';
+            document.getElementById("azimuth1to2").textContent = 'Azimuth dari Titik 1 ke Titik 2: ' + azimuth1_to_2.toFixed(2) + ' derajat';
+            document.getElementById("azimuth2to1").textContent = 'Azimuth dari Titik 2 ke Titik 1: ' + azimuth2_to_1.toFixed(2) + ' derajat';
+        }
+    </script>
+</body>
+</html>
