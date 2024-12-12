@@ -5,39 +5,62 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/@turf/turf"></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
 </head>
 <body>
-    <h1>WebGIS Distance and Azimuth Calculator</h1>
-    <div id="map" style="height: 500px;"></div>
-    
-    <div id="manualInput" style="margin-top: 20px;">
-        <p><strong>Koordinat Titik:</strong></p>
-        <div>
-            <label for="lat1">Latitude Titik 1:</label>
-            <input type="text" id="lat1" placeholder="Klik pada peta untuk memilih titik">
-            <label for="lng1">Longitude Titik 1:</label>
-            <input type="text" id="lng1" placeholder="Klik pada peta untuk memilih titik">
-            <p id="location1">Alamat Titik 1: -</p>
+    <div class="container">
+        <div class="row mt-3">
+            <h1>WebGIS Distance and Azimuth Calculator</h1>
         </div>
-        <div>
-            <label for="lat2">Latitude Titik 2:</label>
-            <input type="text" id="lat2" placeholder="Klik pada peta untuk memilih titik">
-            <label for="lng2">Longitude Titik 2:</label>
-            <input type="text" id="lng2" placeholder="Klik pada peta untuk memilih titik">
-            <p id="location2">Alamat Titik 2: -</p>
-        </div>
-        <button id="calculateButton" style="margin-top: 10px; padding: 10px 20px;">Hitung</button>
-    </div>
-    
-    <div id="results" style="margin-top: 20px; font-size: 16px;">
-        <p><strong>Hasil Perhitungan:</strong></p>
-        <p id="distance">Jarak: -</p>
-        <p id="azimuth1to2">Azimuth dari Titik 1 ke Titik 2: -</p>
-        <p id="azimuth2to1">Azimuth dari Titik 2 ke Titik 1: -</p>
-    </div>
+        <div class="row mt-2">
+            <div class="col-7">
+                <div id="map" style="height: 500px;"></div>
+            </div>
+            <div class="col-3">
+                <div id="manualInput">
+                    <p><strong>Koordinat Titik:</strong></p>
+                    <div>
+                        <div class="mb-1">
+                            <label for="lat1" class="form-label">Latitude Titik 1:</label>
+                            <input type="text" class="form-control" id="lat1" placeholder="Klik pada peta untuk memilih titik">
+                        </div>
+                        <div class="mb-1">
+                            <label for="lng1" class="form-label">Longitude Titik 1:</label>
+                            <input type="text" class="form-control" id="lng1" placeholder="Klik pada peta untuk memilih titik">
+                        </div>
+                        <p id="location1">Alamat Titik 1: -</p>
+                    </div>
+                    <div>
+                        <div class="mb-1">
+                            <label for="lat2" class="form-label">Latitude Titik 2:</label>
+                            <input type="text" class="form-control" id="lat2" placeholder="Klik pada peta untuk memilih titik">
+                        </div>
+                        <div class="mb-1">
+                            <label for="lng2" class="form-label">Longitude Titik 2:</label>
+                            <input type="text" class="form-control" id="lng2" placeholder="Klik pada peta untuk memilih titik">
+                        </div>
+                        <p id="location2">Alamat Titik 2: -</p>
+                    </div>
+                </div>         
+            </div>
+            <div class="col-2">
+                <p><strong>Hasil Perhitungan:</strong></p>
+                <p id="distance">Jarak: -</p>
+                <p id="azimuth1to2">Azimuth dari Titik 1 ke Titik 2: -</p>
+                <p id="azimuth2to1">Azimuth dari Titik 2 ke Titik 1: -</p>
 
-    <button id="resetButton" style="margin-top: 20px; padding: 10px 20px;">Reset</button>
+                <button id="calculateButton" class="btn btn-primary">Hitung</button>
+                <button id="resetButton" class="btn btn-danger">Reset</button>
+            </div>
+        </div>
+    </div>
     
+    <!-- Option 1: Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+
     <script>
         var map = L.map('map').setView([-6.200000, 106.816666], 10);
 
@@ -182,6 +205,35 @@
             document.getElementById("azimuth1to2").textContent = 'Azimuth dari Titik 1 ke Titik 2: ' + azimuth1_to_2.toFixed(2) + ' derajat';
             document.getElementById("azimuth2to1").textContent = 'Azimuth dari Titik 2 ke Titik 1: ' + azimuth2_to_1.toFixed(2) + ' derajat';
         }
+
+        document.getElementById("calculateButton").addEventListener("click", function() {
+            let coord1 = { lat: parseFloat(document.getElementById("lat1").value), lng: parseFloat(document.getElementById("lng1").value) };
+            var coord2 = { lat: parseFloat(document.getElementById("lat2").value), lng: parseFloat(document.getElementById("lng2").value) };
+
+            calculateDistanceAndAzimuth(coord1, coord2);
+
+            // Tambahkan marker untuk koordinat 1
+            let marker1 = L.marker([coord1.lat, coord1.lng]).addTo(map);
+            // Tambahkan marker untuk koordinat 2
+            let marker2 = L.marker([coord2.lat, coord2.lng]).addTo(map);
+
+            // Simpan marker ke dalam array (opsional)
+            markers.push(marker1);
+            markers.push(marker2);
+
+            // Buat bounds dari dua koordinat (membuat batas wilayah peta)
+            let bounds = L.latLngBounds([ 
+            [coord1.lat, coord1.lng], 
+            [coord2.lat, coord2.lng] 
+            ]);
+
+            // Perbesar (zoom) peta agar mencakup kedua marker
+            map.fitBounds(bounds);
+
+            // Panggil reverse geocode untuk kedua marker
+            reverseGeocode(coord1.lat, coord1.lng, marker1, "location1");
+            reverseGeocode(coord2.lat, coord2.lng, marker2, "location2");
+        });
     </script>
 </body>
 </html>
